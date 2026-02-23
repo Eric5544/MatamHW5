@@ -418,24 +418,24 @@ def load_system_from_file(path):
 
 # TODO all the main part here
 if __name__ == "__main__":
+    arguments = sys.argv
+    if len(arguments) != 3 and len(arguments) != 5 and len(arguments) != 7 and len(arguments) != 9:
+        print(
+            "Usage: python3 matamazon.py -l <matamazon_log> -s <matamazon_system> -o <output_file> -os <out_matamazon_system>",
+            file=sys.stderr)
+        exit(0)
+    if "-l" not in arguments:
+        print(
+            "Usage: python3 matamazon.py -l <matamazon_log> -s <matamazon_system> -o <output_file> -os <out_matamazon_system>",
+            file=sys.stderr)
+        exit(0)
+
+    log = None
+    system = MatamazonSystem()
+    out = None
+    out_system = None
+
     try:
-        arguments = sys.argv
-        if len(arguments) != 3 and len(arguments) != 5 and len(arguments) != 7 and len(arguments) != 9:
-            print(
-                "Usage: python3 matamazon.py -l <matamazon_log> -s <matamazon_system> -o <output_file> -os <out_matamazon_system>",
-                file=sys.stderr)
-            exit(0)
-        if "-l" not in arguments:
-            print(
-                "Usage: python3 matamazon.py -l <matamazon_log> -s <matamazon_system> -o <output_file> -os <out_matamazon_system>",
-                file=sys.stderr)
-            exit(0)
-
-        log = None
-        system = MatamazonSystem()
-        out = None
-        out_system = None
-
         for i in range(1, len(arguments), 2):
             if arguments[i] == "-l":
                 log = arguments[i + 1]
