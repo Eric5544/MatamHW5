@@ -1,6 +1,25 @@
-# TODO add all imports needed here
+import json
+import sys
 
-class Customer:
+class InvalidIdException(Exception):
+    pass
+
+class InvalidPriceException(Exception):
+    pass
+
+class Entity:
+    def __init__(self, id, name, city, address):
+        if id < 0:
+            raise InvalidIdException("Invalid id")
+        self.id = id
+        self.name = name
+        self.city = city
+        self.address = address
+
+    def __repr__(self):
+        return f"{type(self).__name__}(id={self.id}, name='{self.name}', city='{self.city}', address='{self.address}')"
+
+class Customer(Entity):
     """
     Represents a customer in the Matamazon system.
 
@@ -23,7 +42,8 @@ class Customer:
     pass
 
 
-class Supplier:
+
+class Supplier(Entity):
     """
     Represents a supplier in the Matamazon system.
 
@@ -58,7 +78,7 @@ class Product:
 
     Exceptions:
         InvalidIdException:
-            - If id/supplier_id/quantity is invalid per specification.
+            - If id/supplier_id is invalid per specification.
         InvalidPriceException:
             - If price is invalid (e.g., negative).
 
@@ -68,8 +88,22 @@ class Product:
     """
 
     # TODO implement this class as instructed
-    pass
+    def __init__(self, id, name, price, supplier_id, quantity):
+        if id < 0 or supplier_id < 0:
+            raise InvalidIdException("Invalid id")
+        if price < 0:
+            raise InvalidPriceException("Invalid price")
+        self.id = id
+        self.name = name
+        self.price = price
+        self.supplier_id = supplier_id
+        self.quantity = quantity
 
+    def __repr__(self):
+        return f"Product(id={self.id}, name='{self.name}', price={self.price}, supplier_id={self.supplier_id}, quantity={self.quantity})"
+
+    def __lt__(self, other):
+        return self.price < other.price
 
 class Order:
     """
@@ -95,16 +129,28 @@ class Order:
     """
 
     # TODO implement this class as instructed
-    pass
+    def __init__(self, id, customer_id, product_id, quantity, total_price):
+        if id < 0 or customer_id < 0 or product_id < 0:
+            raise InvalidIdException("Invalid id")
+        if total_price < 0:
+            raise InvalidPriceException("Invalid price")
+        self.id = id
+        self.customer_id = customer_id
+        self.product_id = product_id
+        self.quantity = quantity
+        self.total_price = total_price
+
+    def __repr__(self):
+        return f'Order(id={self.id}, customer_id={self.customer_id}, product_id={self.product_id}, quantity={self.quantity}, total_price={self.total_price})'
 
 
 class MatamazonSystem:
     """
     Main system class that stores and manages customers, suppliers, products and orders.
 
-    The system must support:
+    The system must support:u
         - Registering customers/suppliers (with unique IDs across both types).
-        - Adding/updating products (must validate supplier existence).
+        - Adding/updating prodcts (must validate supplier existence).
         - Placing orders (validate product existence and stock).
         - Removing objects by ID and type (with dependency constraints).
         - Searching products by name/query and optional max price.
@@ -125,8 +171,11 @@ class MatamazonSystem:
             - Must be parameterless.
             - Internal collections may be chosen freely (dict/list, etc.).
         """
-        # TODO implement this method if needed
-        pass
+        self.customers = {}
+        self.suppliers = {}
+        self.products = {}
+        self.orders = {}
+        self.orderID = 1
 
     def register_entity(self, entity, is_customer):
         """
@@ -142,8 +191,14 @@ class MatamazonSystem:
                 - If the entity ID already exists in the system (note: IDs must be unique across
                   customers AND suppliers).
         """
-        # TODO implement this method as instructed
-        pass
+        if is_customer:
+            if entity.id in self.customers:
+                raise InvalidIdException("ID already exists")
+            self.customers[entity.id] = entity
+        else:
+            if entity.id in self.suppliers:
+                raise InvalidIdException("ID already exists")
+            self.suppliers[entity.id] = entity
 
     def add_or_update_product(self, product):
         """
@@ -164,8 +219,12 @@ class MatamazonSystem:
                 - If the supplier_id does not exist in the system.
                 - If attempting to update a product but supplier_id differs from the existing product.
         """
-        # TODO implement this method as instructed
-        pass
+        if product.supplier_id not in self.suppliers:
+            raise InvalidIdException("supplier_id does not exist")
+        if product.id in self.products and self.products[product.id].supplier_id != product.supplier_id:
+            raise InvalidIdException("supplier_id differs from the existing product")
+        self.products[product.id] = product
+
 
     def place_order(self, customer_id, product_id, quantity=1):
         """
@@ -194,8 +253,14 @@ class MatamazonSystem:
         Notes:
             - The specification assumes quantity is an integer.
         """
-        # TODO implement this method as instructed
-        pass
+        if product_id not in self.products:
+            return "The product does not exist in the system"
+        if self.products[product_id].quantity < quantity:
+            return "The quantity requested for this product is greater than the quantity in stock"
+        self.products[product_id].quantity -= quantity
+        self.orders[self.orderID] = Order(self.orderID, customer_id, product_id, quantity, quantity*self.products[product_id].price)
+        self.orderID += 1
+        return "The order has been accepted in the system"
 
     def remove_object(self, _id, class_type):
         """
@@ -218,8 +283,33 @@ class MatamazonSystem:
                   in the system (i.e., orders that were not removed).
                 - Additional InvalidIdException conditions as required by specification.
         """
-        # TODO implement this method as instructed
-        pass
+        class_type = class_type.lower().strip()
+        if _id < 0:
+            raise InvalidIdException("Invalid id")
+        if class_type == "order" and _id in self.orders:
+            self.products[self.orders[_id].product_id].quantity += self.orders[_id].quantity
+            order = self.orders[_id]
+            del self.orders[_id]
+            return order.quantity
+        if class_type == "customer":
+            for order in self.orders.values():
+                if order.customer_id == _id:
+                    raise InvalidIdException("Dependent order still exists for customer")
+            if _id in self.customers:
+                del self.customers[_id]
+        if class_type == "product":
+            for order in self.orders.values():
+                if order.product_id == _id:
+                    raise InvalidIdException("Dependent order still exists for product")
+            if _id in self.products:
+                del self.products[_id]
+        if class_type == "supplier":
+            for order in self.orders.values():
+                if self.products[order.product_id].supplier_id == _id:
+                    raise InvalidIdException("Dependent order still exists for supplier")
+            if _id in self.suppliers:
+                del self.suppliers[_id]
+        return None
 
     def search_products(self, query, max_price=None):
         """
@@ -235,8 +325,11 @@ class MatamazonSystem:
                 - Sorted by ascending price.
                 - If no matching products exist, return an empty list.
         """
-        # TODO implement this method as instructed
-        pass
+        products = [product for product in self.products.values() if query in product.name and product.quantity > 0]
+        if max_price is not None:
+            products = [product for product in products if product.price <= max_price]
+        products.sort()
+        return products
 
     def export_system_to_file(self, path):
         """
@@ -253,8 +346,13 @@ class MatamazonSystem:
         Raises:
             OSError (or any file-open exception): Must be propagated to the caller.
         """
-        # TODO implement this method as instructed
-        pass
+        with open(path, "w") as f:
+            for customer in self.customers.values():
+                f.write(str(customer)+"\n")
+            for supplier in self.suppliers.values():
+                f.write(str(supplier)+"\n")
+            for product in self.products.values():
+                f.write(str(product)+"\n")
 
     def export_orders(self, out_file):
         """
@@ -276,9 +374,12 @@ class MatamazonSystem:
         Notes:
             - The order origin city is the supplier city of the ordered product.
         """
-        # TODO implement this method as instructed
-        pass
-
+        orders = {}
+        for order in self.orders.values():
+            if self.suppliers[self.products[order.product_id].supplier_id].city not in orders:
+                orders[self.suppliers[self.products[order.product_id].supplier_id].city] = []
+            orders[self.suppliers[self.products[order.product_id].supplier_id].city].append(str(order))
+        json.dump(orders, out_file)
 
 def load_system_from_file(path):
     """
@@ -300,7 +401,78 @@ def load_system_from_file(path):
     Notes:
         - The assignment hints that eval() may be used.
     """
-    # TODO implement this function as instructed
-    pass
+    system = MatamazonSystem()
+    with open(path, "r") as f:
+        lines = [line.strip() for line in f.readlines()]
+        for line in lines:
+            if line[0:8] == "Customer" or line[0:8] == "Supplier":
+                entity = eval(line)
+                if line[0:8] == "Customer":
+                    system.register_entity(entity,True)
+                else:
+                    system.register_entity(entity,False)
+        for line in lines:
+            if line[0:7] == "Product":
+                system.add_or_update_product(eval(line))
+    return system
 
 # TODO all the main part here
+if __name__ == "__main__":
+    arguments = sys.argv
+    if len(arguments) != 3 and len(arguments) != 5 and len(arguments) != 7 and len(arguments) != 9:
+        print("Usage: python3 matamazon.py -l <matamazon_log> -s <matamazon_system> -o <output_file> -os <out_matamazon_system>", file=sys.stderr)
+        exit(0)
+    if "-l" not in arguments:
+        print("Usage: python3 matamazon.py -l <matamazon_log> -s <matamazon_system> -o <output_file> -os <out_matamazon_system>", file=sys.stderr)
+        exit(0)
+
+    log = None
+    system = MatamazonSystem()
+    out = None
+    out_system = None
+
+    for i in range(1, len(arguments), 2):
+        if arguments[i] == "-l":
+            log = arguments[i + 1]
+        elif arguments[i] == "-s":
+            system = load_system_from_file(arguments[i + 1])
+        elif arguments[i] == "-o":
+            out = arguments[i + 1]
+        elif arguments[i] == "-os":
+            out_system = arguments[i + 1]
+
+    with open(log, "r") as f:
+        lines = [line.strip() for line in f.readlines()]
+        for line in lines:
+            words = line.split()
+            if words[0] == "register":
+                if words[1] == "customer":
+                    entity = Customer(int(words[2]), words[3], words[4], words[5])
+                    system.register_entity(entity, True)
+                else:
+                    entity = Supplier(int(words[2]), words[3], words[4], words[5])
+                    system.register_entity(entity, False)
+            elif words[0] == "add" or words[0] == "update":
+                system.add_or_update_product(
+                    Product(int(words[1]), words[2], float(words[3]), int(words[4]), int(words[5])))
+            elif words[0] == "order":
+                if len(words) == 4:
+                    system.place_order(int(words[1]), int(words[2]), int(words[3]))
+                else:
+                    system.place_order(int(words[1]), int(words[2]))
+            elif words[0] == "remove":
+                system.remove_object(int(words[2]), words[1])
+            elif words[0] == "search":
+                if len(words) == 3:
+                    print(system.search_products(words[1], float(words[2])))
+                else:
+                    print(system.search_products(words[1]))
+
+    if out is not None:
+        with open(out, "w") as f:
+            system.export_orders(f)
+    else:
+        system.export_orders(sys.stdout)
+
+    if out_system is not None:
+        system.export_system_to_file(out_system)
