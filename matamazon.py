@@ -481,6 +481,6 @@ if __name__ == "__main__":
 
         if out_system is not None:
             system.export_system_to_file(out_system)
-    except:
+    except Exception:
         print("The matamazon script has encountered an error")
         exit(0)
