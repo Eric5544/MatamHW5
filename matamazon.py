@@ -452,14 +452,14 @@ if __name__ == "__main__":
                 words = line.split()
                 if words[0] == "register":
                     if words[1] == "customer":
-                        entity = Customer(int(words[2]), words[3], words[4], words[5])
+                        entity = Customer(int(words[2]), words[3].replace("_", " "), words[4].replace("_", " "), words[5].replace("_", " "))
                         system.register_entity(entity, True)
                     else:
-                        entity = Supplier(int(words[2]), words[3], words[4], words[5])
+                        entity = Supplier(int(words[2]), words[3].replace("_", " "), words[4].replace("_", " "), words[5].replace("_", " "))
                         system.register_entity(entity, False)
                 elif words[0] == "add" or words[0] == "update":
                     system.add_or_update_product(
-                        Product(int(words[1]), words[2], float(words[3]), int(words[4]), int(words[5])))
+                        Product(int(words[1]), words[2].replace("_", " "), float(words[3]), int(words[4]), int(words[5])))
                 elif words[0] == "order":
                     if len(words) == 4:
                         system.place_order(int(words[1]), int(words[2]), int(words[3]))
@@ -469,9 +469,9 @@ if __name__ == "__main__":
                     system.remove_object(int(words[2]), words[1])
                 elif words[0] == "search":
                     if len(words) == 3:
-                        print(system.search_products(words[1], float(words[2])))
+                        print(system.search_products(words[1].replace("_", " "), float(words[2])))
                     else:
-                        print(system.search_products(words[1]))
+                        print(system.search_products(words[1].replace("_", " ")))
 
         if out is not None:
             with open(out, "w") as f:
