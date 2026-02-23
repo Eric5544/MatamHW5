@@ -418,61 +418,69 @@ def load_system_from_file(path):
 
 # TODO all the main part here
 if __name__ == "__main__":
-    arguments = sys.argv
-    if len(arguments) != 3 and len(arguments) != 5 and len(arguments) != 7 and len(arguments) != 9:
-        print("Usage: python3 matamazon.py -l <matamazon_log> -s <matamazon_system> -o <output_file> -os <out_matamazon_system>", file=sys.stderr)
+    try:
+        arguments = sys.argv
+        if len(arguments) != 3 and len(arguments) != 5 and len(arguments) != 7 and len(arguments) != 9:
+            print(
+                "Usage: python3 matamazon.py -l <matamazon_log> -s <matamazon_system> -o <output_file> -os <out_matamazon_system>",
+                file=sys.stderr)
+            exit(0)
+        if "-l" not in arguments:
+            print(
+                "Usage: python3 matamazon.py -l <matamazon_log> -s <matamazon_system> -o <output_file> -os <out_matamazon_system>",
+                file=sys.stderr)
+            exit(0)
+
+        log = None
+        system = MatamazonSystem()
+        out = None
+        out_system = None
+
+        for i in range(1, len(arguments), 2):
+            if arguments[i] == "-l":
+                log = arguments[i + 1]
+            elif arguments[i] == "-s":
+                system = load_system_from_file(arguments[i + 1])
+            elif arguments[i] == "-o":
+                out = arguments[i + 1]
+            elif arguments[i] == "-os":
+                out_system = arguments[i + 1]
+
+        with open(log, "r") as f:
+            lines = [line.strip() for line in f.readlines()]
+            for line in lines:
+                words = line.split()
+                if words[0] == "register":
+                    if words[1] == "customer":
+                        entity = Customer(int(words[2]), words[3], words[4], words[5])
+                        system.register_entity(entity, True)
+                    else:
+                        entity = Supplier(int(words[2]), words[3], words[4], words[5])
+                        system.register_entity(entity, False)
+                elif words[0] == "add" or words[0] == "update":
+                    system.add_or_update_product(
+                        Product(int(words[1]), words[2], float(words[3]), int(words[4]), int(words[5])))
+                elif words[0] == "order":
+                    if len(words) == 4:
+                        system.place_order(int(words[1]), int(words[2]), int(words[3]))
+                    else:
+                        system.place_order(int(words[1]), int(words[2]))
+                elif words[0] == "remove":
+                    system.remove_object(int(words[2]), words[1])
+                elif words[0] == "search":
+                    if len(words) == 3:
+                        print(system.search_products(words[1], float(words[2])))
+                    else:
+                        print(system.search_products(words[1]))
+
+        if out is not None:
+            with open(out, "w") as f:
+                system.export_orders(f)
+        else:
+            system.export_orders(sys.stdout)
+
+        if out_system is not None:
+            system.export_system_to_file(out_system)
+    except:
+        print("The matamazon script has encountered an error")
         exit(0)
-    if "-l" not in arguments:
-        print("Usage: python3 matamazon.py -l <matamazon_log> -s <matamazon_system> -o <output_file> -os <out_matamazon_system>", file=sys.stderr)
-        exit(0)
-
-    log = None
-    system = MatamazonSystem()
-    out = None
-    out_system = None
-
-    for i in range(1, len(arguments), 2):
-        if arguments[i] == "-l":
-            log = arguments[i + 1]
-        elif arguments[i] == "-s":
-            system = load_system_from_file(arguments[i + 1])
-        elif arguments[i] == "-o":
-            out = arguments[i + 1]
-        elif arguments[i] == "-os":
-            out_system = arguments[i + 1]
-
-    with open(log, "r") as f:
-        lines = [line.strip() for line in f.readlines()]
-        for line in lines:
-            words = line.split()
-            if words[0] == "register":
-                if words[1] == "customer":
-                    entity = Customer(int(words[2]), words[3], words[4], words[5])
-                    system.register_entity(entity, True)
-                else:
-                    entity = Supplier(int(words[2]), words[3], words[4], words[5])
-                    system.register_entity(entity, False)
-            elif words[0] == "add" or words[0] == "update":
-                system.add_or_update_product(
-                    Product(int(words[1]), words[2], float(words[3]), int(words[4]), int(words[5])))
-            elif words[0] == "order":
-                if len(words) == 4:
-                    system.place_order(int(words[1]), int(words[2]), int(words[3]))
-                else:
-                    system.place_order(int(words[1]), int(words[2]))
-            elif words[0] == "remove":
-                system.remove_object(int(words[2]), words[1])
-            elif words[0] == "search":
-                if len(words) == 3:
-                    print(system.search_products(words[1], float(words[2])))
-                else:
-                    print(system.search_products(words[1]))
-
-    if out is not None:
-        with open(out, "w") as f:
-            system.export_orders(f)
-    else:
-        system.export_orders(sys.stdout)
-
-    if out_system is not None:
-        system.export_system_to_file(out_system)
